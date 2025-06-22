@@ -121,6 +121,12 @@ export default function ReceiptsPage() {
 
   // Apply filters and sorting
   useEffect(() => {
+    // Ensure receipts is an array before proceeding
+    if (!Array.isArray(receipts)) {
+      setFilteredReceipts([]);
+      return;
+    }
+    
     let filtered = [...receipts];
 
     // Apply search filter

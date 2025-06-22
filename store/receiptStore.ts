@@ -26,7 +26,7 @@ export const useReceiptStore = create<ReceiptStore>((set, get) => ({
   error: null,
 
   // Actions
-  setReceipts: (receipts) => set({ receipts }),
+  setReceipts: (receipts) => set({ receipts: Array.isArray(receipts) ? receipts : [] }),
   
   addReceipt: (receipt) => set((state) => ({
     receipts: [...state.receipts, receipt]
@@ -49,17 +49,19 @@ export const useReceiptStore = create<ReceiptStore>((set, get) => ({
   // Computed values
   getTotalAmount: () => {
     const { receipts } = get();
+    if (!Array.isArray(receipts)) return 0;
     return receipts.reduce((total, receipt) => total + receipt.amount, 0);
   },
   
   getReceiptCount: () => {
     const { receipts } = get();
+    if (!Array.isArray(receipts)) return 0;
     return receipts.length;
   },
   
   getAverageAmount: () => {
     const { receipts } = get();
-    if (receipts.length === 0) return 0;
+    if (!Array.isArray(receipts) || receipts.length === 0) return 0;
     const total = receipts.reduce((sum, receipt) => sum + receipt.amount, 0);
     return total / receipts.length;
   }
