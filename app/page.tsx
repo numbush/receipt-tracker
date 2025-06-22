@@ -54,14 +54,11 @@ export default function CapturePage() {
       const response = await fetch(capturedImage);
       const blob = await response.blob();
       
-      // Create form data for upload
+      // Create form data for image upload only
       const uploadFormData = new FormData();
-      uploadFormData.append('image', blob, 'receipt.jpg');
-      uploadFormData.append('storeName', formData.storeName);
-      uploadFormData.append('amount', formData.amount);
-      uploadFormData.append('date', formData.date);
+      uploadFormData.append('file', blob, 'receipt.jpg');
 
-      // Upload to API
+      // Upload image to get URL
       const uploadResponse = await fetch('/api/upload', {
         method: 'POST',
         body: uploadFormData,
@@ -71,17 +68,60 @@ export default function CapturePage() {
         throw new Error('Failed to upload receipt');
       }
 
-      const result = await uploadResponse.json();
+      const uploadResult = await uploadResponse.json();
       
-      // Create receipt object
+      if (!uploadResult.success) {
+        throw new Error('Failed to upload image');
+      }
+
+      // Create receipt data for database
+      const receiptData = {
+        storeName: formData.storeName,
+        amount: parseFloat(formData.amount),
+        date: formData.date,
+        imageUrl: uploadResult.data.imageUrl,
+        // Include AI data if available
+        ...(aiData && aiData.success && {
+          confidence: aiData.confidence,
+          extractedText: aiData.extractedText,
+          processingStatus: 'completed' as const
+        })
+      };
+
+      // Save receipt to database
+      const saveResponse = await fetch('/api/receipts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(receiptData),
+      });
+
+      if (!saveResponse.ok) {
+        throw new Error('Failed to save receipt to database');
+      }
+
+      const saveResult = await saveResponse.json();
+      
+      if (!saveResult.success) {
+        throw new Error('Failed to save receipt');
+      }
+
+      // Create receipt object for store
       const newReceipt: Receipt = {
-        _id: result._id,
+        _id: saveResult.data._id,
         storeName: formData.storeName,
         amount: parseFloat(formData.amount),
         date: new Date(formData.date),
-        imageUrl: result.imageUrl,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        imageUrl: uploadResult.data.imageUrl,
+        createdAt: new Date(saveResult.data.createdAt),
+        updatedAt: new Date(saveResult.data.updatedAt),
+        // Include AI data if available
+        ...(aiData && aiData.success && {
+          confidence: aiData.confidence,
+          extractedText: aiData.extractedText,
+          processingStatus: 'completed' as const
+        })
       };
 
       // Add to store
