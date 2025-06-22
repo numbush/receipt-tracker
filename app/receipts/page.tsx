@@ -74,8 +74,16 @@ export default function ReceiptsPage() {
 
       const data = await response.json();
       
+      // Handle API response format - extract receipts array from data property
+      const receiptsArray = data.success ? data.data : data;
+      
+      // Ensure we have an array
+      if (!Array.isArray(receiptsArray)) {
+        throw new Error('Invalid response format: expected array of receipts');
+      }
+      
       // Convert date strings back to Date objects
-      const receiptsWithDates = data.map((receipt: any) => ({
+      const receiptsWithDates = receiptsArray.map((receipt: any) => ({
         ...receipt,
         date: new Date(receipt.date),
         createdAt: new Date(receipt.createdAt),
