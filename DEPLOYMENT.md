@@ -61,16 +61,16 @@ This guide will walk you through deploying the Receipt Tracker application to Ve
    - Vercel will automatically detect it's a Next.js project
 
 3. **Configure environment variables:**
-   Before deploying, add these environment variables:
+   Before deploying, you'll need to add these environment variables in Vercel:
    
    - `MONGODB_URI`: Your MongoDB connection string from Step 2
    - `NEXTAUTH_SECRET`: Generate a random string (you can use: `openssl rand -base64 32`)
-   - `NEXTAUTH_URL`: Will be your Vercel app URL (e.g., `https://your-app.vercel.app`)
+   - `NEXTAUTH_URL`: Your Vercel app URL (e.g., `https://your-app.vercel.app`)
 
    **To add environment variables in Vercel:**
-   - In the import screen, expand "Environment Variables"
-   - Add each variable name and value
-   - Or add them later in Project Settings > Environment Variables
+   - During import: Expand "Environment Variables" section and add each variable
+   - After deployment: Go to Project Settings > Environment Variables
+   - Make sure to set the environment to "Production" for each variable
 
 4. **Deploy:**
    - Click "Deploy"
