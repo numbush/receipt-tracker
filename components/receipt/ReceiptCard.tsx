@@ -7,6 +7,7 @@ import { Trash2, Eye } from 'lucide-react';
 import { useReceiptStore } from '@/store/receiptStore';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { ConfidenceBadge } from '@/components/ui/confidence-badge';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -94,7 +95,12 @@ export function ReceiptCard({ receipt, onViewDetails }: ReceiptCardProps) {
       <CardHeader className="pb-2">
         <div className="flex justify-between items-start">
           <div className="flex-1" onClick={handleViewDetails}>
-            <h3 className="font-semibold text-lg truncate">{receipt.storeName}</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-lg truncate">{receipt.storeName}</h3>
+              {receipt.confidence && (
+                <ConfidenceBadge confidence={receipt.confidence} />
+              )}
+            </div>
             <p className="text-sm text-muted-foreground">
               {formatDate(receipt.date)}
             </p>

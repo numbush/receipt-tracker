@@ -8,6 +8,9 @@ export interface IReceipt extends Document {
   date: Date;
   createdAt: Date;
   updatedAt: Date;
+  confidence?: 'high' | 'medium' | 'low';
+  extractedText?: string;
+  processingStatus?: 'pending' | 'processing' | 'completed' | 'failed';
 }
 
 const ReceiptSchema: Schema = new Schema(
@@ -34,6 +37,17 @@ const ReceiptSchema: Schema = new Schema(
       type: Date,
       required: true,
     },
+    confidence: { 
+      type: String, 
+      enum: ['high', 'medium', 'low'],
+      default: 'medium'
+    },
+    extractedText: { type: String },
+    processingStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'completed', 'failed'],
+      default: 'completed'
+    }
   },
   {
     timestamps: true, // This automatically adds createdAt and updatedAt fields

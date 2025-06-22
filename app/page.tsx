@@ -21,6 +21,7 @@ export default function CapturePage() {
   const [currentStep, setCurrentStep] = useState<CaptureStep>('choose');
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [aiData, setAiData] = useState<any>(null);
 
   // Handle camera permission
   const handlePermissionGranted = useCallback(() => {
@@ -35,8 +36,9 @@ export default function CapturePage() {
   }, []);
 
   // Handle image capture
-  const handleImageCapture = useCallback((imageSrc: string) => {
+  const handleImageCapture = useCallback((imageSrc: string, aiData?: any) => {
     setCapturedImage(imageSrc);
+    setAiData(aiData);
     setCurrentStep('form');
   }, []);
 
@@ -220,6 +222,7 @@ export default function CapturePage() {
               onSubmit={handleFormSubmit}
               onCancel={handleCancel}
               isLoading={isLoading}
+              aiData={aiData}
             />
           </div>
         );

@@ -1,18 +1,20 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { ReceiptFormData } from '@/types/receipt';
+import { ReceiptFormData, AIExtractionResult } from '@/types/receipt';
+import { ConfidenceBadge } from '@/components/ui/confidence-badge';
 
 interface ReceiptFormProps {
   onSubmit: (data: ReceiptFormData) => void;
   onCancel?: () => void;
   initialData?: Partial<ReceiptFormData>;
   isLoading?: boolean;
+  aiData?: AIExtractionResult;
 }
 
 interface FormErrors {
@@ -25,7 +27,8 @@ export function ReceiptForm({
   onSubmit, 
   onCancel, 
   initialData = {}, 
-  isLoading = false 
+  isLoading = false,
+  aiData
 }: ReceiptFormProps) {
   const [formData, setFormData] = useState<ReceiptFormData>({
     storeName: initialData.storeName || '',
@@ -35,6 +38,17 @@ export function ReceiptForm({
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  // Pre-fill form with AI data when available
+  useEffect(() => {
+    if (aiData && aiData.success) {
+      setFormData(prev => ({
+        ...prev,
+        storeName: aiData.storeName || prev.storeName,
+        amount: aiData.amount ? aiData.amount.toString() : prev.amount,
+      }));
+    }
+  }, [aiData]);
 
   // Validation rules
   const validateForm = (): FormErrors => {
@@ -134,7 +148,12 @@ export function ReceiptForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Store Name Field */}
           <div className="space-y-2">
-            <Label htmlFor="storeName">Store Name</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="storeName">Store Name</Label>
+              {aiData && aiData.success && aiData.storeName && (
+                <ConfidenceBadge confidence={aiData.confidence} />
+              )}
+            </div>
             <Input
               id="storeName"
               type="text"
@@ -152,7 +171,12 @@ export function ReceiptForm({
 
           {/* Amount Field */}
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="amount">Amount</Label>
+              {aiData && aiData.success && aiData.amount && (
+                <ConfidenceBadge confidence={aiData.confidence} />
+              )}
+            </div>
             <CurrencyInput
               id="amount"
               value={formData.amount}

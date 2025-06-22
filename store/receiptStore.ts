@@ -1,10 +1,12 @@
 import { create } from 'zustand';
-import { Receipt } from '../types/receipt';
+import { Receipt, AIExtractionResult } from '../types/receipt';
 
 interface ReceiptStore {
   receipts: Receipt[];
   isLoading: boolean;
   error: string | null;
+  isProcessing: boolean;
+  currentProcessingImage: string | null;
   
   // Actions
   setReceipts: (receipts: Receipt[]) => void;
@@ -13,6 +15,8 @@ interface ReceiptStore {
   deleteReceipt: (id: string) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  setProcessing: (processing: boolean, image?: string) => void;
+  processReceiptImage: (imageBase64: string) => Promise<AIExtractionResult>;
   
   // Computed values
   getTotalAmount: () => number;
@@ -24,6 +28,8 @@ export const useReceiptStore = create<ReceiptStore>((set, get) => ({
   receipts: [],
   isLoading: false,
   error: null,
+  isProcessing: false,
+  currentProcessingImage: null,
 
   // Actions
   setReceipts: (receipts) => set({ receipts: Array.isArray(receipts) ? receipts : [] }),
@@ -45,6 +51,39 @@ export const useReceiptStore = create<ReceiptStore>((set, get) => ({
   setLoading: (loading) => set({ isLoading: loading }),
   
   setError: (error) => set({ error }),
+
+  setProcessing: (processing, image) => set({ isProcessing: processing, currentProcessingImage: image || null }),
+
+  processReceiptImage: async (imageBase64: string) => {
+    set({ isProcessing: true, currentProcessingImage: imageBase64 });
+    
+    try {
+      const response = await fetch('/api/analyze-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64 })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        return { ...result.data, success: true };
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      return {
+        storeName: '',
+        amount: 0,
+        confidence: 'low' as const,
+        extractedText: '',
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    } finally {
+      set({ isProcessing: false, currentProcessingImage: null });
+    }
+  },
 
   // Computed values
   getTotalAmount: () => {

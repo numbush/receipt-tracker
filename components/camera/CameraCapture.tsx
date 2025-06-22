@@ -5,9 +5,12 @@ import Webcam from 'react-webcam';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Camera, RotateCcw, Check, X } from 'lucide-react';
+import { ProcessingSpinner } from '@/components/ui/processing-spinner';
+import { useReceiptStore } from '@/store/receiptStore';
+import { useToast } from '@/hooks/use-toast';
 
 interface CameraCaptureProps {
-  onCapture: (imageSrc: string) => void;
+  onCapture: (imageSrc: string, aiData?: any) => void;
   onCancel?: () => void;
 }
 
@@ -15,6 +18,8 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
   const webcamRef = useRef<Webcam>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const { processReceiptImage, isProcessing } = useReceiptStore();
+  const { toast } = useToast();
 
   const videoConstraints = {
     width: 1280,
@@ -35,11 +40,46 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
     setIsCapturing(false);
   }, []);
 
-  const confirmCapture = useCallback(() => {
+  const confirmCapture = useCallback(async () => {
     if (capturedImage) {
-      onCapture(capturedImage);
+      try {
+        // Extract base64 data from the image
+        const base64Data = capturedImage.split(',')[1];
+        
+        // Call AI analysis
+        const aiResult = await processReceiptImage(base64Data);
+        
+        if (aiResult.success) {
+          // Show success message
+          toast({
+            title: "Receipt analyzed!",
+            description: `AI confidence: ${aiResult.confidence}`,
+          });
+          
+          // Pass both image and AI data to parent
+          onCapture(capturedImage, aiResult);
+        } else {
+          // Handle AI failure - still allow manual entry
+          toast({
+            title: "AI analysis failed",
+            description: "Please enter details manually.",
+            variant: "destructive",
+          });
+          
+          onCapture(capturedImage);
+        }
+      } catch (error) {
+        console.error('AI processing error:', error);
+        toast({
+          title: "Could not analyze receipt",
+          description: "Please enter details manually.",
+          variant: "destructive",
+        });
+        
+        onCapture(capturedImage);
+      }
     }
-  }, [capturedImage, onCapture]);
+  }, [capturedImage, onCapture, processReceiptImage, toast]);
 
   const handleCameraReady = useCallback(() => {
     setIsCapturing(true);
@@ -83,6 +123,13 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
         </CardContent>
       </Card>
 
+      {/* AI Processing Indicator */}
+      {isProcessing && (
+        <div className="flex justify-center">
+          <ProcessingSpinner />
+        </div>
+      )}
+
       {/* Control buttons */}
       <div className="flex space-x-4">
         {capturedImage ? (
@@ -92,6 +139,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
               onClick={retake}
               variant="outline"
               size="lg"
+              disabled={isProcessing}
               className="flex items-center space-x-2"
             >
               <RotateCcw className="w-5 h-5" />
@@ -100,10 +148,11 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onCancel }) =>
             <Button
               onClick={confirmCapture}
               size="lg"
+              disabled={isProcessing}
               className="flex items-center space-x-2"
             >
               <Check className="w-5 h-5" />
-              <span>Use Photo</span>
+              <span>{isProcessing ? 'Analyzing...' : 'Use Photo'}</span>
             </Button>
           </>
         ) : (
