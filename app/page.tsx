@@ -44,34 +44,39 @@ export default function CapturePage() {
 
   // Handle form submission
   const handleFormSubmit = useCallback(async (formData: ReceiptFormData) => {
-    if (!capturedImage) return;
-
     setLoading(true);
     setError(null);
 
     try {
-      // Convert base64 image to blob for upload
-      const response = await fetch(capturedImage);
-      const blob = await response.blob();
-      
-      // Create form data for image upload only
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', blob, 'receipt.jpg');
+      let imageUrl = 'https://via.placeholder.com/400x300?text=Receipt+Image'; // Default placeholder
 
-      // Upload image to get URL
-      const uploadResponse = await fetch('/api/upload', {
-        method: 'POST',
-        body: uploadFormData,
-      });
+      // Try to upload image if we have one and blob token is configured
+      if (capturedImage && process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN !== 'your_vercel_blob_token_here') {
+        try {
+          // Convert base64 image to blob for upload
+          const response = await fetch(capturedImage);
+          const blob = await response.blob();
+          
+          // Create form data for image upload
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', blob, 'receipt.jpg');
 
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to upload receipt');
-      }
+          // Upload image to get URL
+          const uploadResponse = await fetch('/api/upload', {
+            method: 'POST',
+            body: uploadFormData,
+          });
 
-      const uploadResult = await uploadResponse.json();
-      
-      if (!uploadResult.success) {
-        throw new Error('Failed to upload image');
+          if (uploadResponse.ok) {
+            const uploadResult = await uploadResponse.json();
+            if (uploadResult.success) {
+              imageUrl = uploadResult.data.imageUrl;
+            }
+          }
+        } catch (uploadError) {
+          console.warn('Image upload failed, using placeholder:', uploadError);
+          // Continue with placeholder image
+        }
       }
 
       // Create receipt data for database
@@ -79,7 +84,7 @@ export default function CapturePage() {
         storeName: formData.storeName,
         amount: parseFloat(formData.amount),
         date: formData.date,
-        imageUrl: uploadResult.data.imageUrl,
+        imageUrl: imageUrl,
         // Include AI data if available
         ...(aiData && aiData.success && {
           confidence: aiData.confidence,
@@ -98,13 +103,14 @@ export default function CapturePage() {
       });
 
       if (!saveResponse.ok) {
-        throw new Error('Failed to save receipt to database');
+        const errorText = await saveResponse.text();
+        throw new Error(`Failed to save receipt: ${errorText}`);
       }
 
       const saveResult = await saveResponse.json();
       
       if (!saveResult.success) {
-        throw new Error('Failed to save receipt');
+        throw new Error(saveResult.error || 'Failed to save receipt');
       }
 
       // Create receipt object for store
@@ -113,7 +119,7 @@ export default function CapturePage() {
         storeName: formData.storeName,
         amount: parseFloat(formData.amount),
         date: new Date(formData.date),
-        imageUrl: uploadResult.data.imageUrl,
+        imageUrl: imageUrl,
         createdAt: new Date(saveResult.data.createdAt),
         updatedAt: new Date(saveResult.data.updatedAt),
         // Include AI data if available
@@ -135,11 +141,11 @@ export default function CapturePage() {
       console.error('Error saving receipt:', error);
       setError(error instanceof Error ? error.message : 'Failed to save receipt');
       
-      alert('Failed to save receipt. Please try again.');
+      alert(`Failed to save receipt: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
     } finally {
       setLoading(false);
     }
-  }, [capturedImage, addReceipt, setLoading, setError]);
+  }, [capturedImage, addReceipt, setLoading, setError, aiData]);
 
   // Handle navigation
   const handleViewReceipts = useCallback(() => {
