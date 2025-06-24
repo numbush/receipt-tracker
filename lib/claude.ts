@@ -54,7 +54,13 @@ Rules:
       throw new Error('No text content found in response');
     }
     
-    const result = JSON.parse(textContent.text);
+    // Remove Markdown code fences if present
+    let jsonText = textContent.text.trim();
+    if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/```[a-zA-Z]*\n?/, '').replace(/```$/, '').trim();
+    }
+    
+    const result = JSON.parse(jsonText);
     
     return {
       storeName: result.storeName || 'Unknown Store',
